@@ -1,0 +1,63 @@
+{
+  "meta": {
+    "instanceId": "n8n_instance"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "path": "consulta-cep",
+        "options": {
+          "responseMode": "lastNode"
+        }
+      },
+      "id": "WebhookCEP",
+      "name": "Webhook CEP",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "cep-webhook-id",
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "url": "=https://viacep.com.br/ws/{{$json.body.cep}}/json/",
+        "responseFormat": "json"
+      },
+      "id": "BuscaCEP",
+      "name": "Buscar no ViaCEP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "queue": "cep_queue",
+        "message": "={{$json}}",
+        "options": {}
+      },
+      "id": "EnviarFila",
+      "name": "Enviar para RabbitMQ",
+      "type": "n8n-nodes-base.rabbitmq",
+      "typeVersion": 1,
+      "position": [750, 300],
+      "credentials": {
+        "rabbitmqDefault": {
+          "id": "RabbitCreds",
+          "name": "RabbitMQ Local"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook CEP": {
+      "main": [["Buscar no ViaCEP"]]
+    },
+    "Buscar no ViaCEP": {
+      "main": [["Enviar para RabbitMQ"]]
+    }
+  },
+  "settings": {},
+  "active": false,
+  "name": "Consulta de CEP"
+}

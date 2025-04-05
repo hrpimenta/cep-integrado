@@ -1,0 +1,44 @@
+import pika
+import json
+import psycopg2
+import time
+
+# Espera o RabbitMQ e o banco estarem prontos
+time.sleep(10)
+
+# Conexão com RabbitMQ
+rabbit_conn = pika.BlockingConnection(pika.ConnectionParameters("rabbitmq"))
+channel = rabbit_conn.channel()
+channel.queue_declare(queue="cep_queue")
+
+# Conexão com o banco de dados PostgreSQL
+pg_conn = psycopg2.connect(
+    host="db",
+    database="cepdata",
+    user="test",
+    password="test"
+)
+cur = pg_conn.cursor()
+
+# Função chamada ao receber mensagem na fila
+def callback(ch, method, properties, body):
+    data = json.loads(body)
+    print("📬 Mensagem recebida:", data)
+
+    cur.execute(
+        "INSERT INTO ceps (cep, logradouro, bairro, localidade, uf) VALUES (%s, %s, %s, %s, %s)",
+        (
+            data.get("cep"),
+            data.get("logradouro"),
+            data.get("bairro"),
+            data.get("localidade"),
+            data.get("uf"),
+        ),
+    )
+    pg_conn.commit()
+    print("💾 Gravado no banco!")
+
+# Escuta a fila
+channel.basic_consume(queue="cep_queue", on_message_callback=callback, auto_ack=True)
+print("👂 Aguardando mensagens na fila 'cep_queue'...")
+channel.start_consuming()
